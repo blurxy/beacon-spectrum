@@ -1,0 +1,51 @@
+{
+ "fpr": 0.01,
+ "duration_s": 10800.0,
+ "trials": 240,
+ "thresholds": {
+  "spectral": 134.67353985835916,
+  "rita-style": 0.6309120698114702
+ },
+ "confound_periodic_benign": {
+  "spectral": 0.2356020942408377,
+  "rita-style": 0.9895287958115183
+ },
+ "rows": [
+  {
+   "jitter": 0.0,
+   "n": 240,
+   "spectral": 0.5791666666666667,
+   "rita_style": 1.0
+  },
+  {
+   "jitter": 0.1,
+   "n": 240,
+   "spectral": 0.5958333333333333,
+   "rita_style": 0.9916666666666667
+  },
+  {
+   "jitter": 0.2,
+   "n": 240,
+   "spectral": 0.36666666666666664,
+   "rita_style": 0.9875
+  },
+  {
+   "jitter": 0.3,
+   "n": 240,
+   "spectral": 0.1875,
+   "rita_style": 0.9625
+  },
+  {
+   "jitter": 0.5,
+   "n": 240,
+   "spectral": 0.0,
+   "rita_style": 0.9375
+  },
+  {
+   "jitter": 0.7,
+   "n": 240,
+   "spectral": 0.0,
+   "rita_style": 0.8708333333333333
+  }
+ ]
+}

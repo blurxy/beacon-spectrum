@@ -120,6 +120,37 @@ synthetic benign traffic is a model of benign traffic, not benign traffic. The
 next milestone is re-running the confound measurement against a real benign
 baseline.
 
+## End to end, on a capture
+
+`python src/selftest_ingest.py` writes a pcap with a beacon planted in noise,
+reads it back with no knowledge of what was planted, and recovers it:
+
+```
+wrote 501 packets (160 of them the planted beacon), 34.3 KB
+parsed 4 flows back out
+  round trip: 160/160 beacon packets recovered
+
+flow                                events     period    p-value
+10.0.0.5 -> 203.0.113.9:443            160      45.0s   0.00e+00  <- planted, 45.0s
+10.0.0.5 -> 198.51.100.4:80            155      26.9s   1.35e-02
+10.0.0.5 -> 203.0.113.200:123          112      64.0s   0.00e+00
+10.0.0.7 -> 198.51.100.9:443            74      36.5s   7.83e-01
+```
+
+**Read the third row.** That is the NTP client, and it scores exactly as hard as
+the beacon — p-value 0.00e+00, both of them. The statistic cannot separate them
+and never will: the thing that distinguishes them is that one is on port 123
+talking to a name that resolves, and the other is not. The two noisy flows are
+correctly unremarkable.
+
+This is the argument of the whole project in four rows: the periodogram did its
+job perfectly and is still not a verdict.
+
+Ingestion reads pcap and Zeek `conn.log`, and parses pcap directly rather than
+via scapy or dpkt, so the tool stays dependency-free on a sensor. Only connection
+STARTS are counted — a beacon is periodic in when it reaches out, and counting
+every packet would measure the transfer instead of the schedule.
+
 ## Run it
 
 ```

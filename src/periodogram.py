@@ -89,6 +89,27 @@ def detect(times, pmin=1.0, pmax=None, oversample=8):
     return float(1.0 / f[i]), zmax, p, int(t.size)
 
 
+def min_events(threshold):
+    """Fewest check-ins that could possibly clear a Z^2 threshold.
+
+    Z^2 = 2N*R^2 and R <= 1, so the statistic is BOUNDED BY 2N. A perfectly
+    periodic beacon observed N times cannot score above 2N however clean it is.
+    Detection is therefore limited by OBSERVATION COUNT independently of jitter,
+    and below this floor the answer is "not enough data", not "no beacon".
+
+    Measured against a 1% FPR threshold of 134.7 on a 3-hour window: 68 events,
+    i.e. nothing slower than one check-in per 159s is detectable at all -- a
+    600s beacon with zero jitter scored 0% and could not have scored otherwise.
+    """
+    return int(np.ceil(threshold / 2.0))
+
+
+def detectable_period(threshold, window_s):
+    """Slowest beacon this window could possibly catch, in seconds."""
+    n = min_events(threshold)
+    return window_s / float(n) if n else float("inf")
+
+
 # --------------------------------------------------------------- baseline ---
 def rita_style_score(times):
     """Time-domain control, in the shape RITA uses: dispersion + skew of gaps.

@@ -9,42 +9,67 @@ that can and cannot do.
 
 ## The result that matters
 
-Two detectors, thresholds pinned so that **1% of aperiodic benign flows alarm**,
-evaluated on 240 aperiodic-benign / 191 periodic-benign / 240-per-cell beacon
-flows over a 3-hour window:
+Two detectors, thresholds pinned so **1% of aperiodic benign flows alarm**, over a
+3-hour window. Reproduce with `python src/benchmark.py`.
 
-| attacker jitter | spectral (Rayleigh Z²) | dispersion/skew |
-|---|---|---|
-| 0%  | 57.9% | 100.0% |
-| 10% | 59.6% | 99.2% |
-| 20% | 36.7% | 98.8% |
-| 30% | 18.8% | 96.2% |
-| 50% | 0.0%  | 93.8% |
-| 70% | 0.0%  | 87.1% |
+**Spectral (Rayleigh Z²)** — detection rate by period and attacker jitter:
 
-Read that table alone and the dispersion score wins everywhere. Now the column
-that is usually missing:
+| period | 0% | 10% | 20% | 30% | 50% | 70% |
+|---|---|---|---|---|---|---|
+| 30 s | 100% | 100% | 100% | 100% | 0% | 0% |
+| 60 s | 100% | 100% | 100% | 0% | 0% | 0% |
+| 120 s | 100% | 100% | 4% | 0% | 0% | 0% |
+| 300 s | 0% | 0% | 0% | 0% | 0% | 0% |
+| 600 s | 0% | 0% | 0% | 0% | 0% | 0% |
 
-| | share of **benign but genuinely periodic** flows that alarm |
+**Dispersion/skew control** — same grid, ~100% almost everywhere, including 600 s
+at 70% jitter.
+
+Read those two tables alone and the control wins outright. Now the column that is
+usually missing — share of **benign but genuinely periodic** flows (NTP,
+telemetry, backups) that alarm at the same operating point:
+
+| | false alarms on benign periodic traffic |
 |---|---|
-| spectral (Rayleigh Z²) | **23.6%** |
-| dispersion/skew | **99.0%** |
+| spectral | **19.4%** |
+| dispersion/skew | **98.0%** |
 
 The dispersion score is not detecting beacons. It is detecting *regularity*, and
-your NTP client, telemetry agent, health check and backup job are all regular. At
-the same operating point it alarms on 99% of them. A detector that catches 87% of
-beacons at 70% jitter and also pages you for almost every periodic service on the
-network has not solved the problem.
+at this operating point it alarms on 98% of the periodic services on your
+network. A detector that catches a 600 s beacon at 70% jitter and also pages you
+for almost every NTP client has not solved the problem.
 
-**So the hard part of beacon detection is not jitter. It is that legitimate
-periodic traffic is periodic on purpose, and jitters less than a competent
-beacon does.** No threshold on any periodicity statistic separates those two
-populations, because on that axis the benign one looks *more* like a beacon than
-the beacon does. Periodicity is a filter, not a verdict; the discriminating
-signal has to come from somewhere else — destination rarity, whether a name was
-ever resolved, data-volume symmetry, the duration the pair has existed.
+### Two independent limits, not one
 
-That is the finding this repo exists to support, and it is measured, not asserted.
+The spectral table has a hard floor that is not about jitter at all.
+**Z² = 2N·R², and R ≤ 1, so the statistic is bounded by 2N.** A *perfectly*
+periodic beacon observed N times cannot score above twice its check-in count,
+however clean it is. At this threshold that means **N ≥ 57 events** — nothing
+slower than one check-in per 189 s is detectable in a 3-hour window **at any
+jitter**. The 300 s and 600 s rows are zero for that reason, and no amount of
+better math moves them; only a longer capture does.
+
+Above the floor, jitter tolerance scales with N: a 30 s beacon survives 30%
+jitter, a 120 s beacon only 10%, because more check-ins buy more averaging.
+
+That gives an honest operating envelope rather than a single accuracy number:
+
+```
+detectable  iff  N >= threshold/2   AND   jitter below a period-dependent limit
+```
+
+Below the floor the correct output is **"not enough data"**, not "no beacon" —
+`min_events()` and `detectable_period()` compute it, so the tool can say which
+one it means.
+
+### What this says about the problem
+
+The hard part of beacon detection is not jitter. It is that legitimate periodic
+traffic is periodic on purpose and jitters *less* than a competent beacon, so on
+the periodicity axis the benign population looks more beacon-like than the beacon
+does. Periodicity is a filter, not a verdict; the discriminating signal has to
+come from elsewhere — destination rarity, whether a name was ever resolved,
+data-volume symmetry, how long the pair has existed.
 
 ## Why not an FFT
 

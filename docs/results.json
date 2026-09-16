@@ -1,51 +1,125 @@
 {
  "fpr": 0.01,
  "duration_s": 10800.0,
- "trials": 240,
+ "trials": 125,
  "thresholds": {
-  "spectral": 134.67353985835916,
-  "rita-style": 0.6309120698114702
+  "spectral": 113.67588494965973,
+  "rita-style": 0.6309592788116457
  },
  "confound_periodic_benign": {
-  "spectral": 0.2356020942408377,
-  "rita-style": 0.9895287958115183
+  "spectral": 0.19387755102040816,
+  "rita-style": 0.9795918367346939
  },
+ "min_events": 57,
+ "slowest_detectable_period_s": 189.47368421052633,
+ "jitters": [
+  0.0,
+  0.1,
+  0.2,
+  0.3,
+  0.5,
+  0.7
+ ],
  "rows": [
   {
-   "jitter": 0.0,
-   "n": 240,
-   "spectral": 0.5791666666666667,
-   "rita_style": 1.0
+   "period": 30.0,
+   "events": 360,
+   "spectral_by_jitter": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0
+   ],
+   "rita_by_jitter": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
   },
   {
-   "jitter": 0.1,
-   "n": 240,
-   "spectral": 0.5958333333333333,
-   "rita_style": 0.9916666666666667
+   "period": 60.0,
+   "events": 180,
+   "spectral_by_jitter": [
+    1.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rita_by_jitter": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
   },
   {
-   "jitter": 0.2,
-   "n": 240,
-   "spectral": 0.36666666666666664,
-   "rita_style": 0.9875
+   "period": 120.0,
+   "events": 90,
+   "spectral_by_jitter": [
+    1.0,
+    1.0,
+    0.04,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rita_by_jitter": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
   },
   {
-   "jitter": 0.3,
-   "n": 240,
-   "spectral": 0.1875,
-   "rita_style": 0.9625
+   "period": 300.0,
+   "events": 36,
+   "spectral_by_jitter": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rita_by_jitter": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.96,
+    0.76
+   ]
   },
   {
-   "jitter": 0.5,
-   "n": 240,
-   "spectral": 0.0,
-   "rita_style": 0.9375
-  },
-  {
-   "jitter": 0.7,
-   "n": 240,
-   "spectral": 0.0,
-   "rita_style": 0.8708333333333333
+   "period": 600.0,
+   "events": 18,
+   "spectral_by_jitter": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rita_by_jitter": [
+    1.0,
+    1.0,
+    0.88,
+    0.96,
+    0.92,
+    0.56
+   ]
   }
  ]
 }

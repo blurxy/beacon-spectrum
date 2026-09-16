@@ -9,8 +9,17 @@ still caught as the attacker increases jitter?
 import sys, os, json, argparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
-from periodogram import detect, rita_style_score
+from periodogram import detect, rita_style_score, min_events, detectable_period
 from simulate import beacon, poisson_flow, human_flow, periodic_benign
+
+
+# Search settings, used identically for the threshold and the detection pass --
+# a threshold calibrated on a different grid than the one being scored is not a
+# threshold. 20s floor because real C2 sleeps are tens of seconds upward, and
+# oversampling past ~4 does not add independent frequencies, only cost: measured
+# 410ms/call at pmin=5/oversample=8 against 13ms here, on identical data.
+PMIN = 20.0
+OVERSAMPLE = 4
 
 
 def score_spectral(t):
@@ -23,7 +32,7 @@ def score_spectral(t):
     jitter down to 64.5%% -- an artifact of the clamp, not of the detector.
     Z^2 = 2N*R^2 is monotonic in the same evidence and has no ceiling.
     """
-    _p, z, _pval, _n = detect(t, pmin=5.0)
+    _p, z, _pval, _n = detect(t, pmin=PMIN, oversample=OVERSAMPLE)
     return float(z)
 
 
@@ -54,8 +63,11 @@ def main():
     ap.add_argument("--trials", type=int, default=300)
     ap.add_argument("--fpr", type=float, default=0.01)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--pmin", type=float, default=PMIN)
+    ap.add_argument("--oversample", type=int, default=OVERSAMPLE)
     ap.add_argument("--out", default="docs/results.json")
     a = ap.parse_args()
+    globals()["PMIN"] = a.pmin; globals()["OVERSAMPLE"] = a.oversample
     rng = np.random.default_rng(a.seed)
 
     aper, per = build_null(a.trials, a.duration, rng)
@@ -77,33 +89,58 @@ def main():
         print("  %-12s %5.1f%%" % (name, 100 * confound[name]))
     print()
 
+    # Report jitter and PERIOD separately. Averaging over periods conflates two
+    # independent limits: jitter smears phase, while a long period simply does
+    # not produce enough check-ins for the statistic to clear any threshold.
+    floor_n = min_events(thr["spectral"])
+    print("Z2 <= 2N, so this threshold needs N >= %d check-ins: nothing slower than"
+          % floor_n)
+    print("one per %.0fs is detectable in this %.1fh window, at ANY jitter.\n"
+          % (detectable_period(thr["spectral"], a.duration), a.duration / 3600.0))
+
     jitters = [0.0, 0.10, 0.20, 0.30, 0.50, 0.70]
+    periods = [30.0, 60.0, 120.0, 300.0, 600.0]
     rows = []
-    print("%-8s %14s %14s" % ("jitter", "spectral TPR", "rita-style TPR"))
-    for j in jitters:
-        hits = {"spectral": 0, "rita-style": 0}
-        n = 0
-        for _ in range(a.trials):
-            period = float(rng.choice([30.0, 60.0, 120.0, 300.0, 600.0]))
-            t = beacon(period, a.duration, jitter=j, rng=rng)
-            if len(t) < 8:
-                continue
-            n += 1
-            if score_spectral(t) >= thr["spectral"]:
-                hits["spectral"] += 1
-            if rita_style_score(t) >= thr["rita-style"]:
-                hits["rita-style"] += 1
-        row = {"jitter": j, "n": n,
-               "spectral": hits["spectral"] / max(1, n),
-               "rita_style": hits["rita-style"] / max(1, n)}
-        rows.append(row)
-        print("%-8s %13.1f%% %13.1f%%" % ("%d%%" % int(j * 100),
-                                          100 * row["spectral"], 100 * row["rita_style"]))
+    hdr = "%-9s" % "period" + "".join("%8s" % ("%d%%" % int(j * 100)) for j in jitters)
+    print("SPECTRAL, detection rate by period and jitter")
+    print(hdr)
+    for P in periods:
+        cells, n_ev = [], int(a.duration / P)
+        for j in jitters:
+            hit = tot = 0
+            for _ in range(max(25, a.trials // len(periods))):
+                t = beacon(P, a.duration, jitter=j, rng=rng)
+                if len(t) < 8:
+                    continue
+                tot += 1
+                hit += score_spectral(t) >= thr["spectral"]
+            cells.append(hit / max(1, tot))
+        rows.append({"period": P, "events": n_ev, "spectral_by_jitter": cells})
+        mark = "" if n_ev >= floor_n else "   <- below the N floor"
+        print("%-9s" % ("%ds" % int(P)) + "".join("%7.0f%%" % (100 * c) for c in cells) + mark)
+
+    print("\nDISPERSION/SKEW control, same grid")
+    print(hdr)
+    for i, P in enumerate(periods):
+        cells = []
+        for j in jitters:
+            hit = tot = 0
+            for _ in range(max(25, a.trials // len(periods))):
+                t = beacon(P, a.duration, jitter=j, rng=rng)
+                if len(t) < 8:
+                    continue
+                tot += 1
+                hit += rita_style_score(t) >= thr["rita-style"]
+            cells.append(hit / max(1, tot))
+        rows[i]["rita_by_jitter"] = cells
+        print("%-9s" % ("%ds" % int(P)) + "".join("%7.0f%%" % (100 * c) for c in cells))
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     with open(a.out, "w") as fh:
         json.dump({"fpr": a.fpr, "duration_s": a.duration, "trials": a.trials,
                    "thresholds": thr, "confound_periodic_benign": confound,
-                   "rows": rows}, fh, indent=1)
+                   "min_events": min_events(thr["spectral"]),
+                   "slowest_detectable_period_s": detectable_period(thr["spectral"], a.duration),
+                   "jitters": jitters, "rows": rows}, fh, indent=1)
     print("\nwrote %s" % a.out)
 
 
